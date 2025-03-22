@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen and Audio Recorder</title>
+</head>
+<body>
+    <label for="codecSelect">Choose codec:</label>
+    <select id="codecSelect"></select>
+    <br>
+    <label><input type="checkbox" id="micCheckbox" checked> Record Microphone</label>
+    <br>
+    <label><input type="checkbox" id="systemAudioCheckbox"> Record System Audio</label>
+    <br>
+    <button id="recordButton">Start Recording</button>
+
+    <script>
+        const codecSelect = document.getElementById('codecSelect');
+        const micCheckbox = document.getElementById('micCheckbox');
+        const systemAudioCheckbox = document.getElementById('systemAudioCheckbox');
+        const recordButton = document.getElementById('recordButton');
+
+        const possibleCodecs = [
+            'video/webm; codecs=vp8,opus',
+            'video/webm; codecs=vp9,opus',
+            'video/webm; codecs=h264,opus',
+            'video/mp4; codecs=h264,aac',
+            'video/webm; codecs=vp8'
+        ];
+
+        const supportedCodecs = possibleCodecs.filter(mimeType => MediaRecorder.isTypeSupported(mimeType));
+        supportedCodecs.forEach(mimeType => {
+            const option = document.createElement('option');
+            option.value = mimeType;
+            option.text = mimeType;
+            codecSelect.appendChild(option);
+        });
+
+        codecSelect.value = 'video/webm; codecs=vp8,opus';
+
+        if (supportedCodecs.length === 0) {
+            alert('No supported codecs found in your browser.');
+            recordButton.disabled = true;
+        }
+
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+        let screenStream;
+        let micStream;
+
+        recordButton.addEventListener('click', async () => {
+            if (!isRecording) {
+                try {
+                    // Detect platform
+                    const isLinux = navigator.platform.toLowerCase().includes('linux');
+
+                    // Request screen capture with system audio if checked
+                    const audioOptions = systemAudioCheckbox.checked ? { audio: true } : { audio: false };
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, ...audioOptions });
+                    console.log('Screen stream tracks:', screenStream.getTracks());
+                    console.log('System audio tracks in screenStream:', screenStream.getAudioTracks());
+
+                    // Linux-specific guidance
+                    if (isLinux && systemAudioCheckbox.checked && screenStream.getAudioTracks().length === 0) {
+                        console.log('Note: System audio capture on Linux may require PulseAudio/PipeWire configuration.');
+                        alert('System audio not detected. On Ubuntu, ensure system audio is playing and PipeWire/PulseAudio is configured correctly.');
+                    }
+
+                    // Request microphone if checked
+                    if (micCheckbox.checked) {
+                        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        console.log('Mic stream tracks:', micStream.getTracks());
+                    } else {
+                        console.log('Microphone recording disabled');
+                    }
+
+                    // Combine streams
+                    const tracks = [...screenStream.getVideoTracks()];
+                    const hasSystemAudio = screenStream.getAudioTracks().length > 0;
+                    const hasMicAudio = micStream && micStream.getAudioTracks().length > 0;
+                    if (hasSystemAudio) {
+                        tracks.push(...screenStream.getAudioTracks());
+                        console.log('Added system audio to combined stream');
+                    } else if (systemAudioCheckbox.checked) {
+                        console.log('System audio requested but not captured - check audio setup.');
+                    }
+                    if (hasMicAudio) {
+                        tracks.push(...micStream.getAudioTracks());
+                        console.log('Added mic audio to combined stream');
+                    }
+                    const combinedStream = new MediaStream(tracks);
+                    console.log('Combined stream tracks:', combinedStream.getTracks());
+
+                    // Adjust codec for video-only if no audio
+                    let mimeType = codecSelect.value;
+                    if (!hasSystemAudio && !hasMicAudio && mimeType.includes('opus')) {
+                        mimeType = 'video/webm; codecs=vp8';
+                        console.log('No audio tracks, falling back to:', mimeType);
+                    }
+
+                    mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
+                    console.log('Starting recording with codec:', mimeType);
+
+                    mediaRecorder.ondataavailable = event => {
+                        console.log('Data available, size:', event.data.size);
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        console.log('Recorder stopped, chunks:', recordedChunks.length);
+                        if (recordedChunks.length === 0) {
+                            console.error('No data recorded - check stream or codec');
+                            alert('Recording failed: No data captured.');
+                            return;
+                        }
+
+                        const blob = new Blob(recordedChunks, { type: mimeType });
+                        console.log('Blob created, size:', blob.size);
+                        const url = URL.createObjectURL(blob);
+
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'recording.' + mimeType.split('/')[1].split(';')[0];
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+
+                        URL.revokeObjectURL(url);
+                        recordedChunks = [];
+
+                        setTimeout(() => {
+                            screenStream.getTracks().forEach(track => track.stop());
+                            if (micStream) micStream.getTracks().forEach(track => track.stop());
+                        }, 100);
+                    };
+
+                    mediaRecorder.start(100); // 100ms chunks
+                    isRecording = true;
+                    recordButton.textContent = 'Stop Recording';
+                } catch (error) {
+                    alert(error.message || 'Error starting recording. Check console.');
+                    console.error('Error starting recording:', error);
+                }
+            } else {
+                console.log('Stopping recorder');
+                mediaRecorder.stop();
+                isRecording = false;
+                recordButton.textContent = 'Start Recording';
+            }
+        });
+    </script>
+</body>
+</html>
