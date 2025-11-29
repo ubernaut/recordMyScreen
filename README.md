@@ -1,2 +1,2 @@
 # recordMyScreen
-client side only, enables the user to record their screen and save the resulting file. 
+Client-side only tool to record your screen and download the result. You can pick the MediaRecorder codec and optionally convert the capture to MP4 or GIF directly in the browser via ffmpeg.wasm (no server involved). Uses the single-threaded ffmpeg-core build so it works without SharedArrayBuffer/COOP-COEP headers (conversion will just be slower). You can also pick an output FPS (15/30/60/90), choose faster processing vs higher quality for the conversion step, and supply a custom filename (default: `recording`). 

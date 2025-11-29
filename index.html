@@ -13,16 +13,47 @@
     <br>
     <label><input type="checkbox" id="systemAudioCheckbox"> Record System Audio</label>
     <br>
+    <label for="outputFormatSelect">Download as:</label>
+    <select id="outputFormatSelect">
+        <option value="source">Recorder output (fastest)</option>
+        <option value="mp4">MP4 (client-side convert)</option>
+        <option value="gif">GIF (client-side convert)</option>
+    </select>
+    <br>
+    <label for="filenameInput">File name:</label>
+    <input id="filenameInput" type="text" placeholder="recording">
+    <br>
+    <label for="fpsSelect">Output FPS:</label>
+    <select id="fpsSelect">
+        <option value="15">15</option>
+        <option value="30" selected>30</option>
+        <option value="60">60</option>
+        <option value="90">90</option>
+    </select>
+    <br>
+    <label for="qualitySelect">Processing priority:</label>
+    <select id="qualitySelect">
+        <option value="fast" selected>Faster processing (smaller files)</option>
+        <option value="quality">Higher quality (slower)</option>
+    </select>
+    <br>
     <button id="recordButton">Start Recording</button>
     <br>
     This is a simple screen recorder using WebRTC. (desktop only) support for system audio varies accross platforms/browsers. when you stop recording you will automatically download the video. 
     <br>
     <a href ="https://github.com/ubernaut/recordMyScreen">Written by me and Grok (github)</a>
+    <div id="statusText" aria-live="polite"></div>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.1/dist/ffmpeg.min.js"></script>
     <script>
         const codecSelect = document.getElementById('codecSelect');
         const micCheckbox = document.getElementById('micCheckbox');
         const systemAudioCheckbox = document.getElementById('systemAudioCheckbox');
         const recordButton = document.getElementById('recordButton');
+        const outputFormatSelect = document.getElementById('outputFormatSelect');
+        const filenameInput = document.getElementById('filenameInput');
+        const fpsSelect = document.getElementById('fpsSelect');
+        const qualitySelect = document.getElementById('qualitySelect');
+        const statusText = document.getElementById('statusText');
 
         const possibleCodecs = [
             'video/webm; codecs=vp8,opus',
@@ -52,6 +83,219 @@
         let isRecording = false;
         let screenStream;
         let micStream;
+        const ffmpegLib = window.FFmpeg;
+        let createFFmpeg;
+        let fetchFile;
+        if (ffmpegLib) {
+            ({ createFFmpeg, fetchFile } = ffmpegLib);
+        } else {
+            console.warn('FFmpeg.wasm failed to load. MP4/GIF conversion will be skipped.');
+        }
+        let ffmpegInstance;
+        let ffmpegLoadingPromise;
+        let ffmpegLogBuffer = [];
+        let lastProgressPercent = 0;
+        let progressInterval;
+        const stopStreams = () => {
+            try {
+                if (screenStream) {
+                    screenStream.getTracks().forEach(track => track.stop());
+                }
+                if (micStream) {
+                    micStream.getTracks().forEach(track => track.stop());
+                }
+            } catch (e) {
+                console.warn('Error stopping tracks', e);
+            }
+        };
+        const qualityProfiles = {
+            fast: {
+                mp4: { preset: 'veryfast', crf: '28' },
+                gifScale: '640:-1'
+            },
+            quality: {
+                mp4: { preset: 'slow', crf: '20' },
+                gifScale: '960:-1'
+            }
+        };
+
+        const getSelectedFps = () => parseInt(fpsSelect.value, 10) || 30;
+        const getQualityProfile = () => qualityProfiles[qualitySelect.value] || qualityProfiles.fast;
+        const sanitizeFileName = (name) => {
+            const trimmed = (name || '').trim();
+            const cleaned = trimmed.replace(/[^a-zA-Z0-9-_]+/g, '_').replace(/^_+|_+$/g, '');
+            return cleaned || 'recording';
+        };
+
+        const setStatus = (message) => {
+            statusText.textContent = message || '';
+        };
+
+        const setProcessingProgress = (percent) => {
+            const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+            lastProgressPercent = clamped;
+            recordButton.textContent = `Processing... ${clamped}%`;
+        };
+        const startProgressSimulation = () => {
+            stopProgressSimulation();
+            progressInterval = setInterval(() => {
+                if (lastProgressPercent < 90) {
+                    setProcessingProgress(lastProgressPercent + 2);
+                }
+            }, 800);
+        };
+        const stopProgressSimulation = () => {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+        };
+
+        const ensureFFmpegLoaded = async () => {
+            if (!createFFmpeg || !fetchFile) {
+                throw new Error('FFmpeg.wasm not available (script may have failed to load).');
+            }
+            if (!ffmpegInstance) {
+                ffmpegInstance = createFFmpeg({
+                    log: false,
+                    mainName: 'main',
+                    // Single-threaded core avoids SharedArrayBuffer requirement (no COOP/COEP needed)
+                    corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js'
+                });
+                if (ffmpegInstance.setLogger) {
+                    ffmpegInstance.setLogger(({ type, message }) => {
+                        if (ffmpegLogBuffer.length > 200) ffmpegLogBuffer = ffmpegLogBuffer.slice(-200);
+                        ffmpegLogBuffer.push(`${type}: ${message}`);
+                        if (type === 'error') console.error('ffmpeg:', message);
+                    });
+                }
+                if (ffmpegInstance.setProgress) {
+                    ffmpegInstance.setProgress(({ ratio }) => {
+                        const pct = ratio && Number.isFinite(ratio) ? ratio * 100 : lastProgressPercent;
+                        setProcessingProgress(pct);
+                    });
+                }
+                ffmpegLoadingPromise = ffmpegInstance.load();
+            }
+            if (ffmpegLoadingPromise) {
+                setStatus('Loading FFmpeg in your browser (first time can take ~10s)...');
+                await ffmpegLoadingPromise;
+                ffmpegLoadingPromise = null;
+            }
+            return ffmpegInstance;
+        };
+
+        const downloadBlob = (blob, extension, baseName) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const name = sanitizeFileName(baseName);
+            a.download = `${name}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        const convertRecording = async (blob, targetFormat, options) => {
+            try {
+                ffmpegLogBuffer = [];
+                setProcessingProgress(0);
+                startProgressSimulation();
+                const ffmpeg = await ensureFFmpegLoaded();
+                setProcessingProgress(5);
+                const inputName = 'input.webm';
+                const outputName = targetFormat === 'gif' ? 'output.gif' : 'output.mp4';
+                const fps = (options && options.fps) || 30;
+                const qualityProfile = (options && options.qualityProfile) || qualityProfiles.fast;
+
+                // Clean up potential leftovers from previous runs
+                try { ffmpeg.FS('unlink', inputName); } catch (_) {}
+                try { ffmpeg.FS('unlink', outputName); } catch (_) {}
+
+                ffmpeg.FS('writeFile', inputName, await fetchFile(blob));
+                if (targetFormat === 'gif') {
+                    setStatus(`Converting to GIF at ${fps} fps...`);
+                    const scale = qualityProfile.gifScale || '640:-1';
+                    await ffmpeg.run(
+                        '-i', inputName,
+                        '-vf', `fps=${fps},scale=${scale}:flags=lanczos`,
+                        '-loop', '0',
+                        outputName
+                    );
+                } else {
+                    const preset = qualityProfile.mp4?.preset || 'veryfast';
+                    const crf = qualityProfile.mp4?.crf || '23';
+                    setStatus(`Transcoding to MP4 at ${fps} fps (${preset}, crf ${crf})...`);
+                    await ffmpeg.run(
+                        '-i', inputName,
+                        '-r', String(fps),
+                        '-c:v', 'libx264',
+                        '-preset', preset,
+                        '-crf', crf,
+                        '-c:a', 'aac',
+                        '-movflags', 'faststart',
+                        outputName
+                    );
+                }
+
+                const data = ffmpeg.FS('readFile', outputName);
+                ffmpeg.FS('unlink', inputName);
+                ffmpeg.FS('unlink', outputName);
+                stopProgressSimulation();
+                setProcessingProgress(100);
+                return new Blob([data.buffer], { type: targetFormat === 'gif' ? 'image/gif' : 'video/mp4' });
+            } catch (error) {
+                stopProgressSimulation();
+                const logTail = ffmpegLogBuffer.slice(-12).join('\n');
+                console.error('Conversion error:', error, logTail);
+                throw new Error(`FFmpeg conversion failed: ${error?.message || error}. Logs: ${logTail}`);
+            }
+        };
+
+        const ffmpegAvailable = () => Boolean(createFFmpeg && fetchFile);
+
+        const handleDownload = async (blob, mimeType) => {
+            const targetFormat = outputFormatSelect.value;
+            const baseName = sanitizeFileName(filenameInput.value);
+            let chosenExtension = (mimeType.split('/')[1] || 'webm').split(';')[0];
+            let finalBlob = blob;
+            let hadError = false;
+
+            recordButton.disabled = true;
+            setProcessingProgress(0);
+
+            try {
+                const selectedFps = getSelectedFps();
+                const qualityProfile = getQualityProfile();
+                if ((targetFormat === 'mp4' || targetFormat === 'gif') && !ffmpegAvailable()) {
+                    setStatus('FFmpeg failed to load. Downloading original recording.');
+                    hadError = true;
+                } else if (targetFormat === 'mp4' && !mimeType.includes('mp4')) {
+                    finalBlob = await convertRecording(blob, 'mp4', { fps: selectedFps, qualityProfile });
+                    chosenExtension = 'mp4';
+                } else if (targetFormat === 'gif') {
+                    finalBlob = await convertRecording(blob, 'gif', { fps: selectedFps, qualityProfile });
+                    chosenExtension = 'gif';
+                } else {
+                    setStatus('Saving original recording...');
+                    if (targetFormat === 'mp4') chosenExtension = 'mp4';
+                    setProcessingProgress(50);
+                }
+            } catch (error) {
+                setStatus('Conversion failed. Downloading original recording instead.');
+                hadError = true;
+                finalBlob = blob;
+            } finally {
+                stopProgressSimulation();
+            }
+
+            downloadBlob(finalBlob, chosenExtension, baseName);
+            setProcessingProgress(100);
+            if (!hadError) setStatus('');
+            recordButton.disabled = false;
+            recordButton.textContent = 'Start Recording';
+        };
 
         recordButton.addEventListener('click', async () => {
             if (!isRecording) {
@@ -113,32 +357,27 @@
                         }
                     };
 
-                    mediaRecorder.onstop = () => {
+                    mediaRecorder.onstop = async () => {
                         console.log('Recorder stopped, chunks:', recordedChunks.length);
                         if (recordedChunks.length === 0) {
                             console.error('No data recorded - check stream or codec');
                             alert('Recording failed: No data captured.');
+                            recordButton.textContent = 'Start Recording';
                             return;
                         }
 
                         const blob = new Blob(recordedChunks, { type: mimeType });
                         console.log('Blob created, size:', blob.size);
-                        const url = URL.createObjectURL(blob);
-
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'recording.' + mimeType.split('/')[1].split(';')[0];
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-
-                        URL.revokeObjectURL(url);
-                        recordedChunks = [];
-
-                        setTimeout(() => {
-                            screenStream.getTracks().forEach(track => track.stop());
-                            if (micStream) micStream.getTracks().forEach(track => track.stop());
-                        }, 100);
+                        // Stop capture as soon as we have the blob to avoid lingering share indicators
+                        stopStreams();
+                        try {
+                            await handleDownload(blob, mimeType);
+                        } catch (downloadError) {
+                            console.error('Download failed:', downloadError);
+                            alert('Download failed. Check console for details.');
+                        } finally {
+                            recordedChunks = [];
+                        }
                     };
 
                     mediaRecorder.start(100); // 100ms chunks
