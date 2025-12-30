@@ -3,46 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen and Audio Recorder</title>
+    <title>Record My Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #03110a;
+            --bg-deep: #020805;
+            --panel: #082a18;
+            --panel-deep: #04170d;
+            --text: #b4ffd5;
+            --text-dim: #73e4a6;
+            --accent: #39ff9c;
+            --accent-2: #1fb36f;
+            --border: #2bd77e;
+            --shadow: rgba(0, 255, 140, 0.22);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'VT323', monospace;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 30% -10%, rgba(65, 255, 170, 0.18), transparent 40%),
+                radial-gradient(circle at 80% 10%, rgba(40, 200, 120, 0.12), transparent 35%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 32px 16px 60px;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background:
+                repeating-linear-gradient(0deg,
+                    rgba(0, 0, 0, 0.28) 0px,
+                    rgba(0, 0, 0, 0.28) 1px,
+                    rgba(0, 0, 0, 0) 3px,
+                    rgba(0, 0, 0, 0) 4px);
+            opacity: 0.5;
+        }
+
+        .console {
+            position: relative;
+            width: min(900px, 100%);
+            background: linear-gradient(180deg, var(--panel), var(--panel-deep));
+            border: 2px solid var(--border);
+            border-radius: 18px;
+            padding: 26px 24px 22px;
+            box-shadow: 0 0 40px var(--shadow), inset 0 0 50px rgba(0, 0, 0, 0.75);
+            overflow: hidden;
+            animation: boot 0.7s ease-out both;
+        }
+
+        .console::before {
+            content: '';
+            position: absolute;
+            inset: -40%;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(57, 255, 156, 0.18), transparent 35%),
+                radial-gradient(circle at 80% 30%, rgba(57, 255, 156, 0.12), transparent 40%);
+            opacity: 0.8;
+            pointer-events: none;
+            animation: glowPulse 6s ease-in-out infinite;
+        }
+
+        .console::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.04) 0px,
+                    rgba(255, 255, 255, 0.04) 1px,
+                    transparent 1px,
+                    transparent 4px);
+            opacity: 0.2;
+            pointer-events: none;
+        }
+
+        .console__header,
+        .controls,
+        .actions,
+        .console__footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        .console__header {
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(43, 215, 126, 0.35);
+            margin-bottom: 18px;
+        }
+
+        .console__boot {
+            margin: 0 0 8px;
+            font-family: 'Silkscreen', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .console__title {
+            margin: 0;
+            font-family: 'Silkscreen', monospace;
+            font-size: clamp(1.4rem, 2.8vw, 2.3rem);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .console__subtitle {
+            margin: 8px 0 0;
+            font-size: 1.1rem;
+            color: var(--text-dim);
+        }
+
+        .controls {
+            display: grid;
+            gap: 16px;
+            margin: 18px 0;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field--two {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+        }
+
+        .field__group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field--checks {
+            display: grid;
+            gap: 10px;
+        }
+
+        label {
+            font-family: 'Silkscreen', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        input[type="text"],
+        select {
+            font-family: 'VT323', monospace;
+            font-size: 1.25rem;
+            color: var(--text);
+            background: #03160c;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            outline: none;
+            box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(180, 255, 213, 0.5);
+        }
+
+        select {
+            appearance: none;
+            background-image:
+                linear-gradient(45deg, transparent 50%, var(--text) 50%),
+                linear-gradient(135deg, var(--text) 50%, transparent 50%);
+            background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%;
+            background-size: 6px 6px;
+            background-repeat: no-repeat;
+            padding-right: 36px;
+        }
+
+        .check {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: rgba(2, 12, 7, 0.6);
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6);
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+
+        .check input {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            background: #001309;
+            position: relative;
+        }
+
+        .check input:checked::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(57, 255, 156, 0.8);
+        }
+
+        .actions {
+            display: grid;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        #recordButton {
+            font-family: 'Silkscreen', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            padding: 14px 18px;
+            border: 3px solid var(--accent);
+            background: #062616;
+            color: var(--text);
+            border-radius: 12px;
+            box-shadow: 0 0 18px rgba(57, 255, 156, 0.35), inset 0 0 12px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+        }
+
+        #recordButton:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 24px rgba(57, 255, 156, 0.5), inset 0 0 12px rgba(0, 0, 0, 0.5);
+        }
+
+        #recordButton:active {
+            transform: translateY(1px) scale(0.99);
+        }
+
+        #recordButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #statusText {
+            min-height: 26px;
+            padding: 8px 12px;
+            border: 1px dashed rgba(43, 215, 126, 0.6);
+            border-radius: 8px;
+            font-family: 'Silkscreen', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            background: rgba(2, 12, 7, 0.5);
+        }
+
+        #statusText:empty {
+            border-color: rgba(43, 215, 126, 0.2);
+        }
+
+        #statusText:not(:empty)::before {
+            content: '>';
+            margin-right: 6px;
+            color: var(--accent);
+        }
+
+        .console__footer {
+            margin-top: 18px;
+            display: grid;
+            gap: 6px;
+            color: var(--text-dim);
+            font-size: 1rem;
+        }
+
+        .console__footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .console__footer a:hover {
+            text-decoration: underline;
+        }
+
+        .controls .field,
+        .actions,
+        .console__footer {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: rise 0.55s ease forwards;
+        }
+
+        .controls .field:nth-child(1) { animation-delay: 0.08s; }
+        .controls .field:nth-child(2) { animation-delay: 0.14s; }
+        .controls .field:nth-child(3) { animation-delay: 0.2s; }
+        .controls .field:nth-child(4) { animation-delay: 0.26s; }
+        .controls .field:nth-child(5) { animation-delay: 0.32s; }
+        .actions { animation-delay: 0.4s; }
+        .console__footer { animation-delay: 0.48s; }
+
+        @keyframes boot {
+            from { opacity: 0; transform: translateY(14px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes rise {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 0.95; }
+        }
+
+        @media (max-width: 600px) {
+            .console {
+                padding: 22px 18px;
+            }
+
+            .console__title {
+                font-size: 1.5rem;
+            }
+
+            label {
+                font-size: 0.6rem;
+            }
+
+            #recordButton {
+                width: 100%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
 </head>
 <body>
-    <label for="codecSelect">Choose codec:</label>
-    <select id="codecSelect"></select>
-    <br>
-    <label><input type="checkbox" id="micCheckbox"> Record Microphone</label>
-    <br>
-    <label><input type="checkbox" id="systemAudioCheckbox"> Record System Audio</label>
-    <br>
-    <label for="outputFormatSelect">Download as:</label>
-    <select id="outputFormatSelect">
-        <option value="source">Recorder output (fastest)</option>
-        <option value="mp4">MP4 (client-side convert)</option>
-        <option value="gif">GIF (client-side convert)</option>
-    </select>
-    <br>
-    <label for="filenameInput">File name:</label>
-    <input id="filenameInput" type="text" placeholder="recording">
-    <br>
-    <label for="fpsSelect">Output FPS:</label>
-    <select id="fpsSelect">
-        <option value="15">15</option>
-        <option value="30" selected>30</option>
-        <option value="60">60</option>
-        <option value="90">90</option>
-    </select>
-    <br>
-    <label for="qualitySelect">Processing priority:</label>
-    <select id="qualitySelect">
-        <option value="fast" selected>Faster processing (smaller files)</option>
-        <option value="quality">Higher quality (slower)</option>
-    </select>
-    <br>
-    <button id="recordButton">Start Recording</button>
-    <br>
-    This is a simple screen recorder using WebRTC. (desktop only) support for system audio varies accross platforms/browsers. when you stop recording you will automatically download the video. 
-    <br>
-    <a href ="https://github.com/ubernaut/recordMyScreen">Written by me and Grok (github)</a>
-    <div id="statusText" aria-live="polite"></div>
+    <main class="console">
+        <header class="console__header">
+            <p class="console__boot">Boot sequence: ready</p>
+            <h1 class="console__title">Record my screen</h1>
+            <p class="console__subtitle">Client-side screen and audio recorder. Desktop browsers only.</p>
+        </header>
+        <section class="controls">
+            <div class="field">
+                <label for="codecSelect">Codec</label>
+                <select id="codecSelect"></select>
+            </div>
+            <div class="field field--checks">
+                <label class="check">
+                    <input type="checkbox" id="micCheckbox">
+                    <span>Record microphone</span>
+                </label>
+                <label class="check">
+                    <input type="checkbox" id="systemAudioCheckbox">
+                    <span>Record system audio</span>
+                </label>
+            </div>
+            <div class="field">
+                <label for="outputFormatSelect">Download as</label>
+                <select id="outputFormatSelect">
+                    <option value="source">Recorder output (fastest)</option>
+                    <option value="mp4">MP4 (client-side convert)</option>
+                    <option value="gif">GIF (client-side convert)</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="filenameInput">File name</label>
+                <input id="filenameInput" type="text" placeholder="recording">
+            </div>
+            <div class="field field--two">
+                <div class="field__group">
+                    <label for="fpsSelect">Output FPS</label>
+                    <select id="fpsSelect">
+                        <option value="15">15</option>
+                        <option value="30" selected>30</option>
+                        <option value="60">60</option>
+                        <option value="90">90</option>
+                    </select>
+                </div>
+                <div class="field__group">
+                    <label for="qualitySelect">Processing priority</label>
+                    <select id="qualitySelect">
+                        <option value="fast" selected>Faster processing (smaller files)</option>
+                        <option value="quality">Higher quality (slower)</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+        <div class="actions">
+            <button id="recordButton">Start Recording</button>
+            <div id="statusText" aria-live="polite"></div>
+        </div>
+        <footer class="console__footer">
+            <p>This is a simple screen recorder using WebRTC. System audio support varies across platforms and browsers. When you stop recording, your capture downloads automatically.</p>
+            <a href="https://github.com/ubernaut/recordMyScreen">Written by me and Grok (github)</a>
+        </footer>
+    </main>
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.1/dist/ffmpeg.min.js"></script>
     <script>
         const codecSelect = document.getElementById('codecSelect');
@@ -83,6 +460,7 @@
         let isRecording = false;
         let screenStream;
         let micStream;
+        let pendingDownloadSettings = null;
         const ffmpegLib = window.FFmpeg;
         let createFFmpeg;
         let fetchFile;
@@ -126,6 +504,12 @@
             const cleaned = trimmed.replace(/[^a-zA-Z0-9-_]+/g, '_').replace(/^_+|_+$/g, '');
             return cleaned || 'recording';
         };
+        const getRecordingSettings = () => ({
+            outputFormat: outputFormatSelect.value,
+            fps: getSelectedFps(),
+            qualityProfile: getQualityProfile(),
+            filename: filenameInput.value
+        });
 
         const setStatus = (message) => {
             statusText.textContent = message || '';
@@ -149,6 +533,17 @@
                 clearInterval(progressInterval);
                 progressInterval = null;
             }
+        };
+        const resetFFmpeg = () => {
+            if (ffmpegInstance && typeof ffmpegInstance.exit === 'function') {
+                try {
+                    ffmpegInstance.exit();
+                } catch (error) {
+                    console.warn('FFmpeg reset failed', error);
+                }
+            }
+            ffmpegInstance = null;
+            ffmpegLoadingPromise = null;
         };
 
         const ensureFFmpegLoaded = async () => {
@@ -198,7 +593,7 @@
         };
 
         const convertRecording = async (blob, targetFormat, options) => {
-            try {
+            const runConversion = async () => {
                 ffmpegLogBuffer = [];
                 setProcessingProgress(0);
                 startProgressSimulation();
@@ -245,19 +640,29 @@
                 stopProgressSimulation();
                 setProcessingProgress(100);
                 return new Blob([data.buffer], { type: targetFormat === 'gif' ? 'image/gif' : 'video/mp4' });
-            } catch (error) {
-                stopProgressSimulation();
-                const logTail = ffmpegLogBuffer.slice(-12).join('\n');
-                console.error('Conversion error:', error, logTail);
-                throw new Error(`FFmpeg conversion failed: ${error?.message || error}. Logs: ${logTail}`);
+            };
+
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                try {
+                    return await runConversion();
+                } catch (error) {
+                    stopProgressSimulation();
+                    const logTail = ffmpegLogBuffer.slice(-12).join('\n');
+                    console.error('Conversion error:', error, logTail);
+                    if (attempt === 0) {
+                        resetFFmpeg();
+                        continue;
+                    }
+                    throw new Error(`FFmpeg conversion failed: ${error?.message || error}. Logs: ${logTail}`);
+                }
             }
         };
 
         const ffmpegAvailable = () => Boolean(createFFmpeg && fetchFile);
 
-        const handleDownload = async (blob, mimeType) => {
-            const targetFormat = outputFormatSelect.value;
-            const baseName = sanitizeFileName(filenameInput.value);
+        const handleDownload = async (blob, mimeType, settings = getRecordingSettings()) => {
+            const targetFormat = settings.outputFormat || 'source';
+            const baseName = sanitizeFileName(settings.filename);
             let chosenExtension = (mimeType.split('/')[1] || 'webm').split(';')[0];
             let finalBlob = blob;
             let hadError = false;
@@ -266,8 +671,8 @@
             setProcessingProgress(0);
 
             try {
-                const selectedFps = getSelectedFps();
-                const qualityProfile = getQualityProfile();
+                const selectedFps = settings.fps || getSelectedFps();
+                const qualityProfile = settings.qualityProfile || getQualityProfile();
                 if ((targetFormat === 'mp4' || targetFormat === 'gif') && !ffmpegAvailable()) {
                     setStatus('FFmpeg failed to load. Downloading original recording.');
                     hadError = true;
@@ -300,6 +705,9 @@
         recordButton.addEventListener('click', async () => {
             if (!isRecording) {
                 try {
+                    recordedChunks = [];
+                    pendingDownloadSettings = getRecordingSettings();
+                    setStatus('');
                     // Detect platform
                     const isLinux = navigator.platform.toLowerCase().includes('linux');
 
@@ -363,6 +771,7 @@
                             console.error('No data recorded - check stream or codec');
                             alert('Recording failed: No data captured.');
                             recordButton.textContent = 'Start Recording';
+                            pendingDownloadSettings = null;
                             return;
                         }
 
@@ -370,13 +779,16 @@
                         console.log('Blob created, size:', blob.size);
                         // Stop capture as soon as we have the blob to avoid lingering share indicators
                         stopStreams();
+                        const downloadSettings = pendingDownloadSettings || getRecordingSettings();
+                        pendingDownloadSettings = null;
                         try {
-                            await handleDownload(blob, mimeType);
+                            await handleDownload(blob, mimeType, downloadSettings);
                         } catch (downloadError) {
                             console.error('Download failed:', downloadError);
                             alert('Download failed. Check console for details.');
                         } finally {
                             recordedChunks = [];
+                            pendingDownloadSettings = null;
                         }
                     };
 
@@ -384,6 +796,7 @@
                     isRecording = true;
                     recordButton.textContent = 'Stop Recording';
                 } catch (error) {
+                    pendingDownloadSettings = null;
                     alert(error.message || 'Error starting recording. Check console.');
                     console.error('Error starting recording:', error);
                 }
