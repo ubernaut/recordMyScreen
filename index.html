@@ -302,6 +302,181 @@
             text-decoration: underline;
         }
 
+        .processing {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 40%, rgba(57, 255, 156, 0.12), transparent 55%),
+                radial-gradient(circle at 50% 60%, rgba(57, 255, 156, 0.08), transparent 60%),
+                linear-gradient(180deg, rgba(1, 12, 7, 0.98) 0%, rgba(2, 14, 9, 0.98) 100%);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 20;
+        }
+
+        .processing::before {
+            content: '';
+            position: absolute;
+            inset: -20%;
+            background: radial-gradient(circle at 50% 45%, rgba(57, 255, 156, 0.16), transparent 60%);
+            opacity: 0.65;
+            animation: glowPulse 6s ease-in-out infinite;
+        }
+
+        .processing::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.05) 0px,
+                    rgba(255, 255, 255, 0.05) 1px,
+                    transparent 1px,
+                    transparent 8px),
+                repeating-linear-gradient(0deg,
+                    rgba(0, 0, 0, 0.4) 0px,
+                    rgba(0, 0, 0, 0.4) 1px,
+                    transparent 1px,
+                    transparent 5px);
+            opacity: 0.2;
+            pointer-events: none;
+        }
+
+        .processing.is-active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .processing__lava {
+            position: absolute;
+            inset: 0;
+            display: block;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.8;
+        }
+
+        #processingLava {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+            opacity: 0.85;
+            filter: contrast(1.15) saturate(1.1);
+        }
+
+        .processing__panel {
+            position: relative;
+            z-index: 1;
+            width: min(640px, 92vw);
+            border: 2px solid var(--border);
+            border-radius: 18px;
+            padding: 24px 24px 20px;
+            background: linear-gradient(180deg, rgba(6, 32, 19, 0.92), rgba(3, 18, 10, 0.96));
+            box-shadow: 0 0 40px rgba(57, 255, 156, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.7);
+            animation: processingFloat 0.8s ease-out both;
+        }
+
+        .processing__label {
+            margin: 0;
+            font-family: 'Silkscreen', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .processing__title {
+            margin: 10px 0 14px;
+            font-family: 'Silkscreen', monospace;
+            font-size: clamp(1.3rem, 2.6vw, 2rem);
+            text-transform: uppercase;
+        }
+
+        .processing__bar {
+            height: 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(43, 215, 126, 0.6);
+            background: rgba(2, 12, 7, 0.8);
+            overflow: hidden;
+        }
+
+        .processing__bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), #c8ffe1);
+            box-shadow: 0 0 14px rgba(57, 255, 156, 0.9);
+            transition: width 0.25s ease;
+        }
+
+        .processing__meta {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 1rem;
+            color: var(--text-dim);
+        }
+
+        .processing__field {
+            margin-top: 12px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .processing__input {
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+            color: var(--text);
+            background: #03160c;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            outline: none;
+            box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6);
+        }
+
+        .processing__input::placeholder {
+            color: rgba(180, 255, 213, 0.5);
+        }
+
+        .processing__percent {
+            font-family: 'Silkscreen', monospace;
+            color: var(--accent);
+        }
+
+        .processing__status {
+            font-family: 'VT323', monospace;
+        }
+
+        .processing__log {
+            margin-top: 12px;
+            min-height: 48px;
+            padding: 10px 12px;
+            border: 1px dashed rgba(43, 215, 126, 0.6);
+            border-radius: 8px;
+            background: rgba(2, 12, 7, 0.75);
+            color: var(--text);
+            font-size: 1rem;
+            white-space: pre-wrap;
+        }
+
+        .processing__hint {
+            margin: 12px 0 0;
+            text-align: right;
+            font-size: 0.95rem;
+            color: var(--text-dim);
+        }
+
         .controls .field,
         .actions,
         .console__footer {
@@ -330,6 +505,11 @@
         @keyframes glowPulse {
             0%, 100% { opacity: 0.55; }
             50% { opacity: 0.95; }
+        }
+
+        @keyframes processingFloat {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         @media (max-width: 600px) {
@@ -420,7 +600,28 @@
             <a href="https://github.com/ubernaut/recordMyScreen">Written by me and Grok (github)</a>
         </footer>
     </main>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.1/dist/ffmpeg.min.js"></script>
+    <div id="processingOverlay" class="processing" aria-hidden="true">
+        <div class="processing__lava" aria-hidden="true">
+            <canvas id="processingLava" aria-hidden="true"></canvas>
+        </div>
+        <div class="processing__panel">
+            <p class="processing__label">Post-processing</p>
+            <h2 class="processing__title">Encoding capture</h2>
+            <div class="processing__bar">
+                <div class="processing__bar-fill" id="processingBarFill"></div>
+            </div>
+            <div class="processing__meta">
+                <span class="processing__percent" id="processingPercent">0%</span>
+                <span class="processing__status" id="processingStatus">Spooling up worker...</span>
+            </div>
+            <div class="processing__field">
+                <label for="processingFilename">Output filename</label>
+                <input id="processingFilename" class="processing__input" type="text" placeholder="recording" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="processing__log" id="processingLog" aria-live="polite"></div>
+            <p class="processing__hint">Keep this tab open while FFmpeg runs.</p>
+        </div>
+    </div>
     <script>
         const codecSelect = document.getElementById('codecSelect');
         const micCheckbox = document.getElementById('micCheckbox');
@@ -431,6 +632,13 @@
         const fpsSelect = document.getElementById('fpsSelect');
         const qualitySelect = document.getElementById('qualitySelect');
         const statusText = document.getElementById('statusText');
+        const processingOverlay = document.getElementById('processingOverlay');
+        const processingBarFill = document.getElementById('processingBarFill');
+        const processingPercent = document.getElementById('processingPercent');
+        const processingStatus = document.getElementById('processingStatus');
+        const processingLog = document.getElementById('processingLog');
+        const processingLava = document.getElementById('processingLava');
+        const processingFilenameInput = document.getElementById('processingFilename');
 
         const possibleCodecs = [
             'video/webm; codecs=vp8,opus',
@@ -460,20 +668,25 @@
         let isRecording = false;
         let screenStream;
         let micStream;
+        let audioContext;
         let pendingDownloadSettings = null;
-        const ffmpegLib = window.FFmpeg;
-        let createFFmpeg;
-        let fetchFile;
-        if (ffmpegLib) {
-            ({ createFFmpeg, fetchFile } = ffmpegLib);
-        } else {
-            console.warn('FFmpeg.wasm failed to load. MP4/GIF conversion will be skipped.');
-        }
-        let ffmpegInstance;
-        let ffmpegLoadingPromise;
-        let ffmpegLogBuffer = [];
+        let processingWorker;
+        let conversionJobId = 0;
+        let activeConversionId = null;
+        const conversionRequests = new Map();
         let lastProgressPercent = 0;
+        let lastProgressUpdate = 0;
         let progressInterval;
+        let lavaAnimationId;
+        let lavaCtx;
+        let lavaImageData;
+        let lavaBlobs = [];
+        let lastLavaTime = 0;
+        let lavaResizeListenerAttached = false;
+        let lavaPointerActive = false;
+        let lavaPointerX = 0;
+        let lavaPointerY = 0;
+        let lavaPointerListenerAttached = false;
         const stopStreams = () => {
             try {
                 if (screenStream) {
@@ -485,6 +698,14 @@
             } catch (e) {
                 console.warn('Error stopping tracks', e);
             }
+            if (audioContext) {
+                audioContext.close().catch(error => {
+                    console.warn('Error closing audio context', error);
+                });
+                audioContext = null;
+            }
+            screenStream = null;
+            micStream = null;
         };
         const qualityProfiles = {
             fast: {
@@ -515,18 +736,234 @@
             statusText.textContent = message || '';
         };
 
+        const showProcessingOverlay = () => {
+            if (processingOverlay) {
+                processingOverlay.classList.add('is-active');
+                processingOverlay.setAttribute('aria-hidden', 'false');
+            }
+            startLavaAnimation();
+        };
+
+        const hideProcessingOverlay = () => {
+            if (processingOverlay) {
+                processingOverlay.classList.remove('is-active');
+                processingOverlay.setAttribute('aria-hidden', 'true');
+            }
+            stopLavaAnimation();
+        };
+
+        const setProcessingStatus = (message) => {
+            if (processingStatus) {
+                processingStatus.textContent = message || '';
+            }
+            setStatus(message);
+        };
+
+        const setProcessingLog = (message) => {
+            if (processingLog) {
+                processingLog.textContent = message || '';
+            }
+        };
+
+        const getDownloadBaseName = (settings, useOverlayName) => {
+            if (useOverlayName && processingFilenameInput) {
+                return sanitizeFileName(processingFilenameInput.value);
+            }
+            const fallback = (settings && settings.filename) || filenameInput.value || '';
+            return sanitizeFileName(fallback);
+        };
+
+        const syncFilenameFromOverlay = () => {
+            if (processingFilenameInput && processingFilenameInput.value.trim()) {
+                filenameInput.value = processingFilenameInput.value.trim();
+            }
+        };
+
+        const prefersReducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const createLavaBlob = (width, height) => {
+            const radius = 8 + Math.random() * 14;
+            const speed = 0.2 + Math.random() * 0.5;
+            const angle = Math.random() * Math.PI * 2;
+            return {
+                x: Math.random() * width,
+                y: Math.random() * height,
+                radius,
+                strength: radius * radius,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed
+            };
+        };
+
+        const updateLavaPointer = (event) => {
+            if (!processingLava) return;
+            const rect = processingLava.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            lavaPointerActive = true;
+            lavaPointerX = ((event.clientX - rect.left) / rect.width) * processingLava.width;
+            lavaPointerY = ((event.clientY - rect.top) / rect.height) * processingLava.height;
+        };
+
+        const clearLavaPointer = () => {
+            lavaPointerActive = false;
+        };
+
+        const getLavaResolution = () => {
+            const viewWidth = Math.max(1, window.innerWidth || 1);
+            const viewHeight = Math.max(1, window.innerHeight || 1);
+            const minDim = Math.min(viewWidth, viewHeight);
+            const base = Math.max(80, Math.min(140, Math.round(minDim / 8)));
+            return {
+                width: Math.round((base * viewWidth) / minDim),
+                height: Math.round((base * viewHeight) / minDim)
+            };
+        };
+
+        const resizeLava = () => {
+            if (!processingLava || !lavaCtx) return;
+            const { width, height } = getLavaResolution();
+            if (processingLava.width === width && processingLava.height === height) {
+                return;
+            }
+            processingLava.width = width;
+            processingLava.height = height;
+            lavaCtx.imageSmoothingEnabled = false;
+            lavaImageData = lavaCtx.createImageData(width, height);
+            lavaBlobs = Array.from({ length: 6 }, () => createLavaBlob(width, height));
+        };
+
+        const initLava = () => {
+            if (!processingLava) return;
+            if (!lavaCtx) {
+                lavaCtx = processingLava.getContext('2d', { willReadFrequently: true });
+            }
+            if (!lavaCtx) return;
+            resizeLava();
+            if (!lavaResizeListenerAttached) {
+                lavaResizeListenerAttached = true;
+                window.addEventListener('resize', () => {
+                    if (lavaAnimationId) {
+                        resizeLava();
+                    }
+                });
+            }
+        };
+
+        const renderLava = (time) => {
+            if (!lavaCtx || !lavaImageData || !processingLava) return;
+            const width = processingLava.width;
+            const height = processingLava.height;
+            const delta = Math.min(48, time - lastLavaTime) / 16.7;
+            lastLavaTime = time;
+            lavaBlobs.forEach(blob => {
+                blob.x += blob.vx * delta;
+                blob.y += blob.vy * delta;
+                if (lavaPointerActive) {
+                    const dx = lavaPointerX - blob.x;
+                    const dy = lavaPointerY - blob.y;
+                    const dist = Math.hypot(dx, dy) + 0.001;
+                    const influence = Math.max(0, 1 - dist / (Math.min(width, height) * 0.6));
+                    const pull = 0.12 * influence;
+                    blob.vx += (dx / dist) * pull;
+                    blob.vy += (dy / dist) * pull;
+                }
+                const speed = Math.hypot(blob.vx, blob.vy);
+                if (speed > 1.6) {
+                    const scale = 1.6 / speed;
+                    blob.vx *= scale;
+                    blob.vy *= scale;
+                }
+                if (blob.x < 0 || blob.x > width) {
+                    blob.vx *= -1;
+                    blob.x = Math.max(0, Math.min(width, blob.x));
+                }
+                if (blob.y < 0 || blob.y > height) {
+                    blob.vy *= -1;
+                    blob.y = Math.max(0, Math.min(height, blob.y));
+                }
+            });
+
+            const data = lavaImageData.data;
+            const threshold = 1.15;
+            let idx = 0;
+            for (let y = 0; y < height; y += 1) {
+                for (let x = 0; x < width; x += 1) {
+                    let field = 0;
+                    for (let i = 0; i < lavaBlobs.length; i += 1) {
+                        const blob = lavaBlobs[i];
+                        const dx = x - blob.x;
+                        const dy = y - blob.y;
+                        field += blob.strength / (dx * dx + dy * dy + 0.8);
+                    }
+                    const intensity = Math.min(1, Math.max(0, (field - threshold) * 0.55));
+                    if (intensity <= 0) {
+                        data[idx] = 0;
+                        data[idx + 1] = 0;
+                        data[idx + 2] = 0;
+                        data[idx + 3] = 0;
+                        idx += 4;
+                        continue;
+                    }
+                    const glow = Math.pow(intensity, 1.35);
+                    data[idx] = 12 + Math.round(50 * glow);
+                    data[idx + 1] = 70 + Math.round(170 * glow);
+                    data[idx + 2] = 35 + Math.round(90 * glow);
+                    data[idx + 3] = 60 + Math.round(170 * glow);
+                    idx += 4;
+                }
+            }
+            lavaCtx.putImageData(lavaImageData, 0, 0);
+        };
+
+        const startLavaAnimation = () => {
+            if (prefersReducedMotion()) return;
+            initLava();
+            if (!lavaCtx || lavaAnimationId) return;
+            if (!lavaPointerListenerAttached && processingOverlay) {
+                lavaPointerListenerAttached = true;
+                processingOverlay.addEventListener('pointermove', updateLavaPointer);
+                processingOverlay.addEventListener('pointerdown', updateLavaPointer);
+                processingOverlay.addEventListener('pointerleave', clearLavaPointer);
+                processingOverlay.addEventListener('pointerup', clearLavaPointer);
+            }
+            lastLavaTime = performance.now();
+            const tick = (time) => {
+                renderLava(time);
+                lavaAnimationId = requestAnimationFrame(tick);
+            };
+            lavaAnimationId = requestAnimationFrame(tick);
+        };
+
+        const stopLavaAnimation = () => {
+            if (lavaAnimationId) {
+                cancelAnimationFrame(lavaAnimationId);
+                lavaAnimationId = null;
+            }
+            clearLavaPointer();
+        };
+
         const setProcessingProgress = (percent) => {
             const clamped = Math.max(0, Math.min(100, Math.round(percent)));
             lastProgressPercent = clamped;
-            recordButton.textContent = `Processing... ${clamped}%`;
+            if (processingBarFill) {
+                processingBarFill.style.width = `${clamped}%`;
+            }
+            if (processingPercent) {
+                processingPercent.textContent = `${clamped}%`;
+            }
+            if (processingOverlay && processingOverlay.classList.contains('is-active')) {
+                recordButton.textContent = `Processing... ${clamped}%`;
+            }
         };
         const startProgressSimulation = () => {
             stopProgressSimulation();
+            lastProgressUpdate = Date.now();
             progressInterval = setInterval(() => {
-                if (lastProgressPercent < 90) {
-                    setProcessingProgress(lastProgressPercent + 2);
+                const sinceUpdate = Date.now() - lastProgressUpdate;
+                if (sinceUpdate > 1200 && lastProgressPercent < 90) {
+                    setProcessingProgress(lastProgressPercent + 1);
                 }
-            }, 800);
+            }, 700);
         };
         const stopProgressSimulation = () => {
             if (progressInterval) {
@@ -534,51 +971,94 @@
                 progressInterval = null;
             }
         };
-        const resetFFmpeg = () => {
-            if (ffmpegInstance && typeof ffmpegInstance.exit === 'function') {
-                try {
-                    ffmpegInstance.exit();
-                } catch (error) {
-                    console.warn('FFmpeg reset failed', error);
-                }
-            }
-            ffmpegInstance = null;
-            ffmpegLoadingPromise = null;
+
+        const workerSupported = () => typeof Worker !== 'undefined';
+
+        const rejectPendingConversions = (errorMessage) => {
+            const error = errorMessage instanceof Error ? errorMessage : new Error(errorMessage || 'Processing worker failed.');
+            conversionRequests.forEach(({ reject }) => reject(error));
+            conversionRequests.clear();
         };
 
-        const ensureFFmpegLoaded = async () => {
-            if (!createFFmpeg || !fetchFile) {
-                throw new Error('FFmpeg.wasm not available (script may have failed to load).');
+        const handleWorkerMessage = (event) => {
+            const data = event.data || {};
+            const { type, jobId } = data;
+            if (!jobId || jobId !== activeConversionId) {
+                return;
             }
-            if (!ffmpegInstance) {
-                ffmpegInstance = createFFmpeg({
-                    log: false,
-                    mainName: 'main',
-                    // Single-threaded core avoids SharedArrayBuffer requirement (no COOP/COEP needed)
-                    corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js'
-                });
-                if (ffmpegInstance.setLogger) {
-                    ffmpegInstance.setLogger(({ type, message }) => {
-                        if (ffmpegLogBuffer.length > 200) ffmpegLogBuffer = ffmpegLogBuffer.slice(-200);
-                        ffmpegLogBuffer.push(`${type}: ${message}`);
-                        if (type === 'error') console.error('ffmpeg:', message);
-                    });
-                }
-                if (ffmpegInstance.setProgress) {
-                    ffmpegInstance.setProgress(({ ratio }) => {
-                        const pct = ratio && Number.isFinite(ratio) ? ratio * 100 : lastProgressPercent;
-                        setProcessingProgress(pct);
-                    });
-                }
-                ffmpegLoadingPromise = ffmpegInstance.load();
+            const request = conversionRequests.get(jobId);
+            if (!request) {
+                return;
             }
-            if (ffmpegLoadingPromise) {
-                setStatus('Loading FFmpeg in your browser (first time can take ~10s)...');
-                await ffmpegLoadingPromise;
-                ffmpegLoadingPromise = null;
+            if (type === 'status') {
+                setProcessingStatus(data.message);
+                return;
             }
-            return ffmpegInstance;
+            if (type === 'log') {
+                setProcessingLog(data.line);
+                return;
+            }
+            if (type === 'progress') {
+                lastProgressUpdate = Date.now();
+                setProcessingProgress(data.progress);
+                return;
+            }
+            if (type === 'done') {
+                conversionRequests.delete(jobId);
+                request.resolve(new Blob([data.buffer], { type: data.mimeType }));
+                return;
+            }
+            if (type === 'error') {
+                conversionRequests.delete(jobId);
+                const details = data.log ? ` Logs: ${data.log}` : '';
+                request.reject(new Error(`${data.message || 'FFmpeg conversion failed.'}${details}`));
+            }
         };
+
+        const handleWorkerError = (error) => {
+            console.error('Processing worker error:', error);
+            const detail = error?.message ? ` (${String(error.message).replace(/\s+/g, ' ').trim()})` : '';
+            setProcessingStatus(`Processing worker failed${detail}.`);
+            rejectPendingConversions('Processing worker failed.');
+            if (processingWorker) {
+                processingWorker.terminate();
+                processingWorker = null;
+            }
+        };
+
+        const createProcessingWorker = () => {
+            if (processingWorker) {
+                return processingWorker;
+            }
+            if (!workerSupported()) {
+                return null;
+            }
+            processingWorker = new Worker('processing-worker.js?v=2');
+            processingWorker.addEventListener('message', handleWorkerMessage);
+            processingWorker.addEventListener('error', handleWorkerError);
+            return processingWorker;
+        };
+
+        const convertRecording = async (blob, targetFormat, options) => {
+            const worker = createProcessingWorker();
+            if (!worker) {
+                throw new Error('Web Workers are not supported in this browser.');
+            }
+            const buffer = await blob.arrayBuffer();
+            const jobId = ++conversionJobId;
+            activeConversionId = jobId;
+            return new Promise((resolve, reject) => {
+                conversionRequests.set(jobId, { resolve, reject });
+                try {
+                    worker.postMessage({ type: 'convert', payload: { jobId, buffer, targetFormat, options } }, [buffer]);
+                } catch (error) {
+                    conversionRequests.delete(jobId);
+                    reject(error);
+                }
+            });
+        };
+
+        const ffmpegAvailable = () => workerSupported();
 
         const downloadBlob = (blob, extension, baseName) => {
             const url = URL.createObjectURL(blob);
@@ -592,110 +1072,62 @@
             URL.revokeObjectURL(url);
         };
 
-        const convertRecording = async (blob, targetFormat, options) => {
-            const runConversion = async () => {
-                ffmpegLogBuffer = [];
-                setProcessingProgress(0);
-                startProgressSimulation();
-                const ffmpeg = await ensureFFmpegLoaded();
-                setProcessingProgress(5);
-                const inputName = 'input.webm';
-                const outputName = targetFormat === 'gif' ? 'output.gif' : 'output.mp4';
-                const fps = (options && options.fps) || 30;
-                const qualityProfile = (options && options.qualityProfile) || qualityProfiles.fast;
-
-                // Clean up potential leftovers from previous runs
-                try { ffmpeg.FS('unlink', inputName); } catch (_) {}
-                try { ffmpeg.FS('unlink', outputName); } catch (_) {}
-
-                ffmpeg.FS('writeFile', inputName, await fetchFile(blob));
-                if (targetFormat === 'gif') {
-                    setStatus(`Converting to GIF at ${fps} fps...`);
-                    const scale = qualityProfile.gifScale || '640:-1';
-                    await ffmpeg.run(
-                        '-i', inputName,
-                        '-vf', `fps=${fps},scale=${scale}:flags=lanczos`,
-                        '-loop', '0',
-                        outputName
-                    );
-                } else {
-                    const preset = qualityProfile.mp4?.preset || 'veryfast';
-                    const crf = qualityProfile.mp4?.crf || '23';
-                    setStatus(`Transcoding to MP4 at ${fps} fps (${preset}, crf ${crf})...`);
-                    await ffmpeg.run(
-                        '-i', inputName,
-                        '-r', String(fps),
-                        '-c:v', 'libx264',
-                        '-preset', preset,
-                        '-crf', crf,
-                        '-c:a', 'aac',
-                        '-movflags', 'faststart',
-                        outputName
-                    );
-                }
-
-                const data = ffmpeg.FS('readFile', outputName);
-                ffmpeg.FS('unlink', inputName);
-                ffmpeg.FS('unlink', outputName);
-                stopProgressSimulation();
-                setProcessingProgress(100);
-                return new Blob([data.buffer], { type: targetFormat === 'gif' ? 'image/gif' : 'video/mp4' });
-            };
-
-            for (let attempt = 0; attempt < 2; attempt += 1) {
-                try {
-                    return await runConversion();
-                } catch (error) {
-                    stopProgressSimulation();
-                    const logTail = ffmpegLogBuffer.slice(-12).join('\n');
-                    console.error('Conversion error:', error, logTail);
-                    if (attempt === 0) {
-                        resetFFmpeg();
-                        continue;
-                    }
-                    throw new Error(`FFmpeg conversion failed: ${error?.message || error}. Logs: ${logTail}`);
-                }
-            }
-        };
-
-        const ffmpegAvailable = () => Boolean(createFFmpeg && fetchFile);
-
         const handleDownload = async (blob, mimeType, settings = getRecordingSettings()) => {
             const targetFormat = settings.outputFormat || 'source';
-            const baseName = sanitizeFileName(settings.filename);
             let chosenExtension = (mimeType.split('/')[1] || 'webm').split(';')[0];
             let finalBlob = blob;
             let hadError = false;
+            const selectedFps = settings.fps || getSelectedFps();
+            const qualityProfile = settings.qualityProfile || getQualityProfile();
+            const needsConversion = targetFormat === 'gif' || (targetFormat === 'mp4' && !mimeType.includes('mp4'));
+            const canProcess = needsConversion && ffmpegAvailable();
 
             recordButton.disabled = true;
-            setProcessingProgress(0);
+            if (canProcess) {
+                if (processingFilenameInput) {
+                    processingFilenameInput.value = settings.filename || filenameInput.value || '';
+                }
+                showProcessingOverlay();
+                setProcessingStatus('Spooling up processing worker...');
+                setProcessingLog('');
+                setProcessingProgress(0);
+                startProgressSimulation();
+            } else {
+                setProcessingProgress(0);
+            }
 
             try {
-                const selectedFps = settings.fps || getSelectedFps();
-                const qualityProfile = settings.qualityProfile || getQualityProfile();
-                if ((targetFormat === 'mp4' || targetFormat === 'gif') && !ffmpegAvailable()) {
-                    setStatus('FFmpeg failed to load. Downloading original recording.');
+                if (needsConversion && !canProcess) {
+                    setStatus('Web Workers are not supported. Downloading original recording.');
                     hadError = true;
-                } else if (targetFormat === 'mp4' && !mimeType.includes('mp4')) {
-                    finalBlob = await convertRecording(blob, 'mp4', { fps: selectedFps, qualityProfile });
-                    chosenExtension = 'mp4';
-                } else if (targetFormat === 'gif') {
-                    finalBlob = await convertRecording(blob, 'gif', { fps: selectedFps, qualityProfile });
-                    chosenExtension = 'gif';
+                } else if (needsConversion) {
+                    const target = targetFormat === 'gif' ? 'gif' : 'mp4';
+                    finalBlob = await convertRecording(blob, target, { fps: selectedFps, qualityProfile });
+                    chosenExtension = target;
+                    setProcessingProgress(100);
                 } else {
                     setStatus('Saving original recording...');
                     if (targetFormat === 'mp4') chosenExtension = 'mp4';
-                    setProcessingProgress(50);
+                    setProcessingProgress(60);
                 }
             } catch (error) {
-                setStatus('Conversion failed. Downloading original recording instead.');
+                console.error('Conversion failed:', error);
+                const detail = error?.message ? ` (${String(error.message).replace(/\s+/g, ' ').trim()})` : '';
+                setProcessingStatus(`Conversion failed${detail}. Downloading original recording instead.`);
                 hadError = true;
                 finalBlob = blob;
             } finally {
                 stopProgressSimulation();
+                if (canProcess) {
+                    hideProcessingOverlay();
+                }
             }
 
-            downloadBlob(finalBlob, chosenExtension, baseName);
+            const downloadName = getDownloadBaseName(settings, canProcess);
+            if (canProcess) {
+                syncFilenameFromOverlay();
+            }
+            downloadBlob(finalBlob, chosenExtension, downloadName);
             setProcessingProgress(100);
             if (!hadError) setStatus('');
             recordButton.disabled = false;
@@ -708,17 +1140,26 @@
                     recordedChunks = [];
                     pendingDownloadSettings = getRecordingSettings();
                     setStatus('');
+                    screenStream = null;
+                    micStream = null;
                     // Detect platform
                     const isLinux = navigator.platform.toLowerCase().includes('linux');
 
                     // Request screen capture with system audio if checked
-                    const audioOptions = systemAudioCheckbox.checked ? { audio: true } : { audio: false };
+                    const requestedSystemAudio = systemAudioCheckbox.checked;
+                    const audioOptions = requestedSystemAudio ? { audio: true } : { audio: false };
                     screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, ...audioOptions });
                     console.log('Screen stream tracks:', screenStream.getTracks());
                     console.log('System audio tracks in screenStream:', screenStream.getAudioTracks());
 
+                    const systemAudioTracks = screenStream.getAudioTracks();
+                    const hasSystemAudio = systemAudioTracks.length > 0;
+
                     // Linux-specific guidance
-                    if (isLinux && systemAudioCheckbox.checked && screenStream.getAudioTracks().length === 0) {
+                    if (requestedSystemAudio && !hasSystemAudio) {
+                        setStatus('System audio not detected. Enable "Share audio" in the picker.');
+                    }
+                    if (isLinux && requestedSystemAudio && !hasSystemAudio) {
                         console.log('Note: System audio capture on Linux may require PulseAudio/PipeWire configuration.');
                         alert('System audio not detected. On Ubuntu, ensure system audio is playing and PipeWire/PulseAudio is configured correctly.');
                     }
@@ -728,29 +1169,65 @@
                         micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                         console.log('Mic stream tracks:', micStream.getTracks());
                     } else {
+                        micStream = null;
                         console.log('Microphone recording disabled');
                     }
 
                     // Combine streams
                     const tracks = [...screenStream.getVideoTracks()];
-                    const hasSystemAudio = screenStream.getAudioTracks().length > 0;
-                    const hasMicAudio = micStream && micStream.getAudioTracks().length > 0;
-                    if (hasSystemAudio) {
-                        tracks.push(...screenStream.getAudioTracks());
-                        console.log('Added system audio to combined stream');
-                    } else if (systemAudioCheckbox.checked) {
-                        console.log('System audio requested but not captured - check audio setup.');
+                    const micAudioTracks = micStream ? micStream.getAudioTracks() : [];
+                    const hasMicAudio = micAudioTracks.length > 0;
+                    let mixedAudioTrack = null;
+                    if (hasSystemAudio && hasMicAudio) {
+                        try {
+                            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            const destination = audioContext.createMediaStreamDestination();
+                            const systemSource = audioContext.createMediaStreamSource(screenStream);
+                            const micSource = audioContext.createMediaStreamSource(micStream);
+                            systemSource.connect(destination);
+                            micSource.connect(destination);
+                            if (audioContext.state === 'suspended') {
+                                await audioContext.resume();
+                            }
+                            const mixedTracks = destination.stream.getAudioTracks();
+                            if (mixedTracks.length > 0) {
+                                mixedAudioTrack = mixedTracks[0];
+                                console.log('Mixed system audio and mic into a single track');
+                            }
+                        } catch (error) {
+                            console.warn('Audio mixing failed, falling back to multiple tracks', error);
+                            if (audioContext) {
+                                audioContext.close().catch(closeError => {
+                                    console.warn('Error closing audio context after failed mix', closeError);
+                                });
+                                audioContext = null;
+                            }
+                        }
                     }
-                    if (hasMicAudio) {
-                        tracks.push(...micStream.getAudioTracks());
-                        console.log('Added mic audio to combined stream');
+
+                    if (mixedAudioTrack) {
+                        tracks.push(mixedAudioTrack);
+                    } else {
+                        if (hasSystemAudio) {
+                            tracks.push(...systemAudioTracks);
+                            console.log('Added system audio to combined stream');
+                        } else if (requestedSystemAudio) {
+                            console.log('System audio requested but not captured - check audio setup.');
+                        }
+                        if (hasMicAudio) {
+                            tracks.push(...micAudioTracks);
+                            console.log('Added mic audio to combined stream');
+                        } else if (micCheckbox.checked) {
+                            console.log('Microphone requested but not captured - check mic permissions.');
+                        }
                     }
                     const combinedStream = new MediaStream(tracks);
                     console.log('Combined stream tracks:', combinedStream.getTracks());
 
                     // Adjust codec for video-only if no audio
+                    const hasAudio = Boolean(mixedAudioTrack) || hasSystemAudio || hasMicAudio;
                     let mimeType = codecSelect.value;
-                    if (!hasSystemAudio && !hasMicAudio && mimeType.includes('opus')) {
+                    if (!hasAudio && mimeType.includes('opus')) {
                         mimeType = 'video/webm; codecs=vp8';
                         console.log('No audio tracks, falling back to:', mimeType);
                     }
@@ -772,6 +1249,7 @@
                             alert('Recording failed: No data captured.');
                             recordButton.textContent = 'Start Recording';
                             pendingDownloadSettings = null;
+                            stopStreams();
                             return;
                         }
 
@@ -797,8 +1275,10 @@
                     recordButton.textContent = 'Stop Recording';
                 } catch (error) {
                     pendingDownloadSettings = null;
+                    stopStreams();
                     alert(error.message || 'Error starting recording. Check console.');
                     console.error('Error starting recording:', error);
+                    recordButton.textContent = 'Start Recording';
                 }
             } else {
                 console.log('Stopping recorder');
