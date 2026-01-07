@@ -3,6 +3,8 @@ let ffmpegLoadingPromise;
 let activeJobId = null;
 let logBuffer = [];
 let lastLogTime = 0;
+let estimatedDuration = 0;
+let lastProgressSent = 0;
 
 const ensureDomShim = () => {
     if (typeof document === 'undefined') {
@@ -50,6 +52,41 @@ const pushLog = (message) => {
 
 const cleanLog = (message) => message.replace(/\s+/g, ' ').trim();
 
+// Parse time string like "00:00:05.23" or "00:05.23" to seconds
+const parseTimeToSeconds = (timeStr) => {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':').map(p => parseFloat(p) || 0);
+    if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+    }
+    return parts[0] || 0;
+};
+
+// Extract duration from FFmpeg output (e.g., "Duration: 00:00:10.50")
+const parseDuration = (message) => {
+    const match = message.match(/Duration:\s*(\d{2}:\d{2}:\d{2}\.\d+)/i);
+    if (match) {
+        return parseTimeToSeconds(match[1]);
+    }
+    return 0;
+};
+
+// Extract current time from FFmpeg progress output (e.g., "time=00:00:05.23")
+const parseCurrentTime = (message) => {
+    const match = message.match(/time=\s*(\d{2}:\d{2}:\d{2}\.\d+)/i);
+    if (match) {
+        return parseTimeToSeconds(match[1]);
+    }
+    // Also try simpler format
+    const simpleMatch = message.match(/time=\s*(\d+:\d+\.\d+)/i);
+    if (simpleMatch) {
+        return parseTimeToSeconds(simpleMatch[1]);
+    }
+    return 0;
+};
+
 const runCommand = async (ffmpegInstance, args) => {
     try {
         await ffmpegInstance.run(...args);
@@ -86,6 +123,28 @@ const ensureFFmpeg = async () => {
                 pushLog(message);
                 const now = Date.now();
                 const trimmed = cleanLog(message);
+                
+                // Try to extract duration from input file info
+                if (trimmed.includes('Duration:') && estimatedDuration === 0) {
+                    const duration = parseDuration(trimmed);
+                    if (duration > 0) {
+                        estimatedDuration = duration;
+                    }
+                }
+                
+                // Calculate progress from current time
+                if (trimmed.includes('time=') && estimatedDuration > 0) {
+                    const currentTime = parseCurrentTime(trimmed);
+                    if (currentTime > 0) {
+                        const percent = Math.min(95, Math.max(0, Math.round((currentTime / estimatedDuration) * 100)));
+                        // Only send if progress increased
+                        if (percent > lastProgressSent) {
+                            lastProgressSent = percent;
+                            send({ type: 'progress', jobId: activeJobId, progress: percent });
+                        }
+                    }
+                }
+                
                 if (trimmed.includes('frame=') || trimmed.includes('time=')) {
                     if (now - lastLogTime > 160) {
                         lastLogTime = now;
@@ -97,10 +156,16 @@ const ensureFFmpeg = async () => {
                 }
             });
         }
+        // Keep setProgress as fallback, but our logger-based progress is more reliable
         if (ffmpeg.setProgress) {
             ffmpeg.setProgress(({ ratio }) => {
-                const percent = ratio && Number.isFinite(ratio) ? Math.min(100, Math.max(0, Math.round(ratio * 100))) : 0;
-                send({ type: 'progress', jobId: activeJobId, progress: percent });
+                // Only use this if our time-based calculation hasn't sent any progress
+                if (lastProgressSent === 0 && ratio && Number.isFinite(ratio)) {
+                    const percent = Math.min(95, Math.max(0, Math.round(ratio * 100)));
+                    if (percent > 0) {
+                        send({ type: 'progress', jobId: activeJobId, progress: percent });
+                    }
+                }
             });
         }
         ffmpegLoadingPromise = ffmpeg.load();
@@ -133,6 +198,8 @@ self.onmessage = async (event) => {
 
     logBuffer = [];
     lastLogTime = 0;
+    estimatedDuration = 0;
+    lastProgressSent = 0;
     try {
         send({ type: 'status', jobId, message: targetFormat === 'gif' ? 'Rendering GIF frames...' : 'Transcoding video...' });
         const ffmpegInstance = await ensureFFmpeg();
